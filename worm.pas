@@ -230,9 +230,10 @@ begin
   while gameJalan do
   begin
     // 1. Tangani Input & Event Window
+// 1. Tangani Input & Event Window
     while SDL_PollEvent(@event) do
     begin
-      case event._type of
+      case event.type_ of // <--- Ganti dari _type menjadi type_
         SDL_EVENT_QUIT:
           gameJalan := False;
 
