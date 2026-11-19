@@ -3,18 +3,17 @@ program GameCacingEdukasiSDL3;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, SDL3; // Pastikan unit wrapper SDL3 tersedia di path Free Pascal Anda
+  SysUtils, SDL3;
 
 const
-  GRID_W = 40;       // Lebar arena dalam satuan kotak (grid)
-  GRID_H = 24;       // Tinggi arena dalam satuan kotak (grid)
-  CELL_SIZE = 20;    // Ukuran 1 kotak dalam piksel (20x20 px)
-  HUD_HEIGHT = 80;   // Tinggi area bawah untuk soal, nyawa, dan skor
+  GRID_W = 40;
+  GRID_H = 24;
+  CELL_SIZE = 20;
+  HUD_HEIGHT = 80;
 
   WINDOW_W = GRID_W * CELL_SIZE;
   WINDOW_H = (GRID_H * CELL_SIZE) + HUD_HEIGHT;
 
-  // Kode arah custom pengganti kode ASCII crt
   ARAH_ATAS  = 1;
   ARAH_BAWAH = 2;
   ARAH_KIRI  = 3;
@@ -25,19 +24,15 @@ var
   renderer: PSDL_Renderer;
   event: TSDL_Event;
 
-  // Koordinat cacing (dalam satuan grid)
   cacingX, cacingY: array[1..100] of Integer;
   panjangCacing: Integer;
   arah, arahBerikutnya: Integer;
 
-  // Variabel Soal Matematika
   angka1, angka2, jawabanBenar, jawabanSalah: Integer;
 
-  // Koordinat Target Angka di Grid
   targetBenarX, targetBenarY: Integer;
   targetSalahX, targetSalahY: Integer;
 
-  // Status Game
   gameJalan, gameOver: Boolean;
   skor, nyawa, i: Integer;
   lastTick, currentTick: UInt64;
@@ -52,7 +47,6 @@ begin
     jawabanSalah := jawabanBenar + (Random(5) - 2);
   until (jawabanSalah <> jawabanBenar) and (jawabanSalah >= 0);
 
-  // Tentukan posisi acak di dalam arena (hindari dinding luar)
   targetBenarX := Random(GRID_W - 4) + 2;
   targetBenarY := Random(GRID_H - 4) + 2;
 
@@ -101,14 +95,12 @@ procedure UpdateLogikaGame;
 begin
   arah := arahBerikutnya;
 
-  // Geser koordinat tubuh cacing dari belakang ke depan
   for i := panjangCacing downto 2 do
   begin
     cacingX[i] := cacingX[i - 1];
     cacingY[i] := cacingY[i - 1];
   end;
 
-  // Gerakkan kepala cacing
   case arah of
     ARAH_ATAS:  Dec(cacingY[1]);
     ARAH_BAWAH: Inc(cacingY[1]);
@@ -116,7 +108,6 @@ begin
     ARAH_KANAN: Inc(cacingX[1]);
   end;
 
-  // 1. Deteksi tabrakan dinding pagar
   if (cacingX[1] <= 0) or (cacingX[1] >= GRID_W - 1) or
      (cacingY[1] <= 0) or (cacingY[1] >= GRID_H - 1) then
   begin
@@ -126,14 +117,12 @@ begin
       gameOver := True;
       Exit;
     end;
-    // Reset kepala ke tengah
     cacingX[1] := GRID_W div 2;
     cacingY[1] := GRID_H div 2;
     arah := ARAH_KANAN;
     arahBerikutnya := ARAH_KANAN;
   end;
 
-  // 2. Deteksi memakan JAWABAN BENAR
   if (cacingX[1] = targetBenarX) and (cacingY[1] = targetBenarY) then
   begin
     skor := skor + 10;
@@ -141,7 +130,6 @@ begin
     GenerateSoalDanTarget;
   end;
 
-  // 3. Deteksi memakan JAWABAN SALAH
   if (cacingX[1] = targetSalahX) and (cacingY[1] = targetSalahY) then
   begin
     Dec(nyawa);
@@ -156,13 +144,11 @@ procedure RenderLayar;
 var
   teksSoal, teksStatus: string;
 begin
-  // Bersihkan layar dengan warna latar gelap
   SDL_SetRenderDrawColor(renderer, 25, 28, 36, 255);
   SDL_RenderClear(renderer);
 
   if not gameOver then
   begin
-    // 1. Gambar Dinding Pagar (Abu-abu kebiruan)
     for i := 0 to GRID_W - 1 do
     begin
       GambarKotak(i, 0, 100, 110, 130);
@@ -174,19 +160,16 @@ begin
       GambarKotak(GRID_W - 1, i, 100, 110, 130);
     end;
 
-    // 2. Gambar Target Angka di Arena (Kotak kuning + angka hitam)
     GambarKotak(targetBenarX, targetBenarY, 255, 215, 0);
     RenderTeksSkala(targetBenarX * CELL_SIZE + 3, targetBenarY * CELL_SIZE + 6, 1.2, IntToStr(jawabanBenar), 0, 0, 0);
 
     GambarKotak(targetSalahX, targetSalahY, 255, 215, 0);
     RenderTeksSkala(targetSalahX * CELL_SIZE + 3, targetSalahY * CELL_SIZE + 6, 1.2, IntToStr(jawabanSalah), 0, 0, 0);
 
-    // 3. Gambar Cacing (Kepala hijau terang, badan hijau tua)
     GambarKotak(cacingX[1], cacingY[1], 80, 250, 120);
     for i := 2 to panjangCacing do
       GambarKotak(cacingX[i], cacingY[i], 40, 180, 80);
 
-    // 4. Gambar HUD / Panel Soal di bagian bawah
     teksSoal := Format('SOAL: %d + %d = ?', [angka1, angka2]);
     teksStatus := Format('NYAWA: %d  |  SKOR: %d  |  [ESC] Keluar', [nyawa, skor]);
 
@@ -195,7 +178,6 @@ begin
   end
   else
   begin
-    // Layar Game Over
     RenderTeksSkala(WINDOW_W div 2 - 140, WINDOW_H div 2 - 80, 3.0, 'GAME OVER!', 255, 85, 85);
     RenderTeksSkala(WINDOW_W div 2 - 170, WINDOW_H div 2 - 20, 1.8, 'Hebat! Kamu sudah belajar berhitung.', 255, 255, 255);
     RenderTeksSkala(WINDOW_W div 2 - 130, WINDOW_H div 2 + 20, 2.0, Format('Skor Akhir: %d', [skor]), 80, 250, 120);
@@ -208,7 +190,6 @@ end;
 begin
   Randomize;
 
-  // Inisialisasi SDL3
   if not SDL_Init(SDL_INIT_VIDEO) then
   begin
     WriteLn('Gagal inisialisasi SDL3: ', SDL_GetError);
@@ -226,14 +207,11 @@ begin
   gameJalan := True;
   lastTick := SDL_GetTicks;
 
-  // Game Loop Utama
   while gameJalan do
   begin
-    // 1. Tangani Input & Event Window
-// 1. Tangani Input & Event Window
     while SDL_PollEvent(@event) do
     begin
-      case event.type_ of // <--- Ganti dari _type menjadi type_
+      case event.type_ of
         SDL_EVENT_QUIT:
           gameJalan := False;
 
@@ -256,7 +234,6 @@ begin
       end;
     end;
 
-    // 2. Update pergerakan cacing setiap 120 ms (non-blocking pengganti delay(120))
     currentTick := SDL_GetTicks;
     if (not gameOver) and (currentTick - lastTick >= 120) then
     begin
@@ -264,13 +241,12 @@ begin
       lastTick := currentTick;
     end;
 
-    // 3. Render ulang seluruh tampilan
     RenderLayar;
     SDL_Delay(16); // Batasi ~60 FPS agar CPU tidak 100%
   end;
 
-  // Bersihkan memori sebelum keluar
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit;
+  readln;
 end.
